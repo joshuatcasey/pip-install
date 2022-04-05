@@ -1,12 +1,11 @@
 package main
 
 import (
-	"github.com/paketo-buildpacks/packit/v2/fs"
 	"os"
 
 	"github.com/paketo-buildpacks/packit/v2"
-	"github.com/paketo-buildpacks/packit/v2/chronos"
 	"github.com/paketo-buildpacks/packit/v2/draft"
+	"github.com/paketo-buildpacks/packit/v2/fs"
 	"github.com/paketo-buildpacks/packit/v2/pexec"
 	"github.com/paketo-buildpacks/packit/v2/scribe"
 	pipinstall "github.com/paketo-buildpacks/pip-install"
@@ -21,7 +20,6 @@ func main() {
 			draft.NewPlanner(),
 			pipinstall.NewPipInstallProcess(pexec.NewExecutable("pip"), logger, fs.NewChecksumCalculator()),
 			pipinstall.NewSiteProcess(pexec.NewExecutable("python")),
-			chronos.DefaultClock,
 			logger,
 		),
 	)

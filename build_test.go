@@ -8,10 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/paketo-buildpacks/packit/v2"
-	"github.com/paketo-buildpacks/packit/v2/chronos"
 	"github.com/paketo-buildpacks/packit/v2/scribe"
 	pipinstall "github.com/paketo-buildpacks/pip-install"
 	"github.com/paketo-buildpacks/pip-install/fakes"
@@ -31,10 +29,8 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 		entryResolver       *fakes.EntryResolver
 		installProcess      *fakes.InstallProcess
 		sitePackagesProcess *fakes.SitePackagesProcess
-		clock               chronos.Clock
 
-		timeStamp time.Time
-		buffer    *bytes.Buffer
+		buffer *bytes.Buffer
 
 		build packit.BuildFunc
 	)
@@ -58,18 +54,12 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 
 		buffer = bytes.NewBuffer(nil)
 
-		timeStamp = time.Now()
-		clock = chronos.NewClock(func() time.Time {
-			return timeStamp
-		})
-
 		installProcess.ExecuteCall.Returns.String = "fake-dependency-sha"
 
 		build = pipinstall.Build(
 			entryResolver,
 			installProcess,
 			sitePackagesProcess,
-			clock,
 			scribe.NewEmitter(buffer),
 		)
 	})
@@ -114,7 +104,6 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 					Launch:           false,
 					Cache:            false,
 					Metadata: map[string]interface{}{
-						"built_at":       timeStamp.Format(time.RFC3339Nano),
 						"dependency-sha": "fake-dependency-sha",
 					},
 				},
@@ -177,7 +166,6 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 						Launch:           true,
 						Cache:            true,
 						Metadata: map[string]interface{}{
-							"built_at":       timeStamp.Format(time.RFC3339Nano),
 							"dependency-sha": "fake-dependency-sha",
 						},
 					},
@@ -227,7 +215,6 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 						Launch:           true,
 						Cache:            true,
 						Metadata: map[string]interface{}{
-							"built_at":       timeStamp.Format(time.RFC3339Nano),
 							"dependency-sha": "fake-dependency-sha",
 						},
 					},
@@ -285,7 +272,6 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 						Launch:           true,
 						Cache:            true,
 						Metadata: map[string]interface{}{
-							"built_at":       timeStamp.Format(time.RFC3339Nano),
 							"dependency-sha": "checksum-using-pip-cache",
 						},
 					},

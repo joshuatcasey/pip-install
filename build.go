@@ -36,7 +36,7 @@ type SitePackagesProcess interface {
 // Build will install the pip dependencies by using the requirements.txt file
 // to a packages layer. It also makes use of a cache layer to reuse the pip
 // cache.
-func Build(entryResolver EntryResolver, installProcess InstallProcess, siteProcess SitePackagesProcess, clock chronos.Clock, logger scribe.Emitter) packit.BuildFunc {
+func Build(entryResolver EntryResolver, installProcess InstallProcess, siteProcess SitePackagesProcess, logger scribe.Emitter) packit.BuildFunc {
 	return func(context packit.BuildContext) (packit.BuildResult, error) {
 		logger.Title("%s %s", context.BuildpackInfo.Name, context.BuildpackInfo.Version)
 
@@ -52,7 +52,7 @@ func Build(entryResolver EntryResolver, installProcess InstallProcess, siteProce
 
 		logger.Process("Executing build process")
 		var checksum string
-		duration, err := clock.Measure(func() error {
+		duration, err := chronos.DefaultClock.Measure(func() error {
 			checksum, err = installProcess.Execute(context.WorkingDir, packagesLayer.Path, cacheLayer.Path)
 			return err
 		})
@@ -64,7 +64,6 @@ func Build(entryResolver EntryResolver, installProcess InstallProcess, siteProce
 		logger.Break()
 
 		packagesLayer.Metadata = map[string]interface{}{
-			"built_at":       clock.Now().Format(time.RFC3339Nano),
 			"dependency-sha": checksum,
 		}
 
