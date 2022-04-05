@@ -22,7 +22,7 @@ type EntryResolver interface {
 
 // InstallProcess defines the interface for installing the pip dependencies.
 type InstallProcess interface {
-	Execute(workingDir, targetDir, cacheDir string) error
+	Execute(workingDir, targetDir, cacheDir string) (string, error)
 }
 
 // SitePackagesProcess defines the interface for determining the site-packages path.
@@ -51,8 +51,10 @@ func Build(entryResolver EntryResolver, installProcess InstallProcess, siteProce
 		}
 
 		logger.Process("Executing build process")
+		var checksum string
 		duration, err := clock.Measure(func() error {
-			return installProcess.Execute(context.WorkingDir, packagesLayer.Path, cacheLayer.Path)
+			checksum, err = installProcess.Execute(context.WorkingDir, packagesLayer.Path, cacheLayer.Path)
+			return err
 		})
 		if err != nil {
 			return packit.BuildResult{}, err
@@ -62,7 +64,8 @@ func Build(entryResolver EntryResolver, installProcess InstallProcess, siteProce
 		logger.Break()
 
 		packagesLayer.Metadata = map[string]interface{}{
-			"built_at": clock.Now().Format(time.RFC3339Nano),
+			"built_at":       clock.Now().Format(time.RFC3339Nano),
+			"dependency-sha": checksum,
 		}
 
 		packagesLayer.Launch, packagesLayer.Build = entryResolver.MergeLayerTypes(SitePackages, context.Plan.Entries)

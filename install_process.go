@@ -12,6 +12,12 @@ import (
 	"github.com/paketo-buildpacks/packit/v2/scribe"
 )
 
+//go:generate faux --interface Summer --output fakes/summer.go
+// Summer will provide the checksum of a directory
+type Summer interface {
+	Sum(paths ...string) (string, error)
+}
+
 //go:generate faux --interface Executable --output fakes/executable.go
 
 // Executable defines the interface for invoking an executable.
@@ -23,13 +29,15 @@ type Executable interface {
 type PipInstallProcess struct {
 	executable Executable
 	logger     scribe.Emitter
+	summer     Summer
 }
 
 // NewPipInstallProcess creates an instance of the PipInstallProcess given an Executable.
-func NewPipInstallProcess(executable Executable, logger scribe.Emitter) PipInstallProcess {
+func NewPipInstallProcess(executable Executable, logger scribe.Emitter, summer Summer) PipInstallProcess {
 	return PipInstallProcess{
 		executable: executable,
 		logger:     logger,
+		summer:     summer,
 	}
 }
 
@@ -37,7 +45,7 @@ func NewPipInstallProcess(executable Executable, logger scribe.Emitter) PipInsta
 // the targetPath. The cachePath is used for the pip cache directory. If the
 // vendor directory is present, the pip install command will install from local
 // packages.
-func (p PipInstallProcess) Execute(workingDir, targetPath, cachePath string) error {
+func (p PipInstallProcess) Execute(workingDir, targetPath, cachePath string) (string, error) {
 	var args []string
 	_, err := os.Stat(filepath.Join(workingDir, "vendor"))
 	if err != nil {
@@ -53,7 +61,7 @@ func (p PipInstallProcess) Execute(workingDir, targetPath, cachePath string) err
 				"--disable-pip-version-check",
 			}
 		} else {
-			return err
+			return "", err
 		}
 	} else {
 		args = []string{
@@ -81,8 +89,8 @@ func (p PipInstallProcess) Execute(workingDir, targetPath, cachePath string) err
 		Stderr: buffer,
 	})
 	if err != nil {
-		return fmt.Errorf("pip install failed:\n%s\nerror: %w", buffer, err)
+		return "", fmt.Errorf("pip install failed:\n%s\nerror: %w", buffer, err)
 	}
 
-	return nil
+	return p.summer.Sum(targetPath)
 }

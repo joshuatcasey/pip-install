@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/paketo-buildpacks/packit/v2/fs"
 	"os"
 
 	"github.com/paketo-buildpacks/packit/v2"
@@ -18,7 +19,7 @@ func main() {
 		pipinstall.Detect(),
 		pipinstall.Build(
 			draft.NewPlanner(),
-			pipinstall.NewPipInstallProcess(pexec.NewExecutable("pip"), logger),
+			pipinstall.NewPipInstallProcess(pexec.NewExecutable("pip"), logger, fs.NewChecksumCalculator()),
 			pipinstall.NewSiteProcess(pexec.NewExecutable("python")),
 			chronos.DefaultClock,
 			logger,

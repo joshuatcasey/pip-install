@@ -4,7 +4,7 @@ import "sync"
 
 type InstallProcess struct {
 	ExecuteCall struct {
-		sync.Mutex
+		mutex     sync.Mutex
 		CallCount int
 		Receives  struct {
 			WorkingDir string
@@ -12,15 +12,16 @@ type InstallProcess struct {
 			CacheDir   string
 		}
 		Returns struct {
-			Error error
+			String string
+			Error  error
 		}
-		Stub func(string, string, string) error
+		Stub func(string, string, string) (string, error)
 	}
 }
 
-func (f *InstallProcess) Execute(param1 string, param2 string, param3 string) error {
-	f.ExecuteCall.Lock()
-	defer f.ExecuteCall.Unlock()
+func (f *InstallProcess) Execute(param1 string, param2 string, param3 string) (string, error) {
+	f.ExecuteCall.mutex.Lock()
+	defer f.ExecuteCall.mutex.Unlock()
 	f.ExecuteCall.CallCount++
 	f.ExecuteCall.Receives.WorkingDir = param1
 	f.ExecuteCall.Receives.TargetDir = param2
@@ -28,5 +29,5 @@ func (f *InstallProcess) Execute(param1 string, param2 string, param3 string) er
 	if f.ExecuteCall.Stub != nil {
 		return f.ExecuteCall.Stub(param1, param2, param3)
 	}
-	return f.ExecuteCall.Returns.Error
+	return f.ExecuteCall.Returns.String, f.ExecuteCall.Returns.Error
 }

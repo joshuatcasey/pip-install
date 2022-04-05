@@ -63,6 +63,8 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 			return timeStamp
 		})
 
+		installProcess.ExecuteCall.Returns.String = "fake-dependency-sha"
+
 		build = pipinstall.Build(
 			entryResolver,
 			installProcess,
@@ -112,7 +114,8 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 					Launch:           false,
 					Cache:            false,
 					Metadata: map[string]interface{}{
-						"built_at": timeStamp.Format(time.RFC3339Nano),
+						"built_at":       timeStamp.Format(time.RFC3339Nano),
+						"dependency-sha": "fake-dependency-sha",
 					},
 				},
 			},
@@ -174,7 +177,8 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 						Launch:           true,
 						Cache:            true,
 						Metadata: map[string]interface{}{
-							"built_at": timeStamp.Format(time.RFC3339Nano),
+							"built_at":       timeStamp.Format(time.RFC3339Nano),
+							"dependency-sha": "fake-dependency-sha",
 						},
 					},
 				},
@@ -223,7 +227,8 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 						Launch:           true,
 						Cache:            true,
 						Metadata: map[string]interface{}{
-							"built_at": timeStamp.Format(time.RFC3339Nano),
+							"built_at":       timeStamp.Format(time.RFC3339Nano),
+							"dependency-sha": "fake-dependency-sha",
 						},
 					},
 				},
@@ -233,13 +238,13 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 
 	context("install process utilizes cache", func() {
 		it.Before(func() {
-			installProcess.ExecuteCall.Stub = func(_, _, cachePath string) error {
+			installProcess.ExecuteCall.Stub = func(_, _, cachePath string) (string, error) {
 				err := os.MkdirAll(filepath.Join(cachePath, "something"), os.ModePerm)
 				if err != nil {
-					return fmt.Errorf("issue with stub call: %+v", err)
+					return "", fmt.Errorf("issue with stub call: %+v", err)
 				}
 
-				return nil
+				return "checksum-using-pip-cache", nil
 			}
 			entryResolver.MergeLayerTypesCall.Returns.Launch = true
 			entryResolver.MergeLayerTypesCall.Returns.Build = true
@@ -280,7 +285,8 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 						Launch:           true,
 						Cache:            true,
 						Metadata: map[string]interface{}{
-							"built_at": timeStamp.Format(time.RFC3339Nano),
+							"built_at":       timeStamp.Format(time.RFC3339Nano),
+							"dependency-sha": "checksum-using-pip-cache",
 						},
 					},
 					{

@@ -2,6 +2,7 @@ package pipinstall_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -25,6 +26,7 @@ func testInstallProcess(t *testing.T, context spec.G, it spec.S) {
 		cacheLayerPath    string
 		workingDir        string
 		executable        *fakes.Executable
+		summer            *fakes.Summer
 
 		pipInstallProcess pipinstall.PipInstallProcess
 	)
@@ -41,14 +43,18 @@ func testInstallProcess(t *testing.T, context spec.G, it spec.S) {
 		Expect(err).NotTo(HaveOccurred())
 
 		executable = &fakes.Executable{}
+		summer = &fakes.Summer{}
 
-		pipInstallProcess = pipinstall.NewPipInstallProcess(executable, scribe.NewEmitter(bytes.NewBuffer(nil)))
+		summer.SumCall.Returns.String = "fake-checksum"
+
+		pipInstallProcess = pipinstall.NewPipInstallProcess(executable, scribe.NewEmitter(bytes.NewBuffer(nil)), summer)
 	})
 
 	context("Execute", func() {
 		it("runs installation", func() {
-			err := pipInstallProcess.Execute(workingDir, packagesLayerPath, cacheLayerPath)
+			checksum, err := pipInstallProcess.Execute(workingDir, packagesLayerPath, cacheLayerPath)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(checksum).To(Equal("fake-checksum"))
 
 			Expect(executable.ExecuteCall.Receives.Execution).To(MatchFields(IgnoreExtras, Fields{
 				"Args": Equal([]string{
@@ -64,6 +70,10 @@ func testInstallProcess(t *testing.T, context spec.G, it spec.S) {
 				"Dir": Equal(workingDir),
 				"Env": ContainElement(fmt.Sprintf("PYTHONUSERBASE=%s", packagesLayerPath)),
 			}))
+
+			Expect(summer.SumCall.Receives.Paths).To(Equal([]string{
+				packagesLayerPath,
+			}))
 		})
 
 		context("when vendor directory exists", func() {
@@ -72,8 +82,9 @@ func testInstallProcess(t *testing.T, context spec.G, it spec.S) {
 			})
 
 			it("runs installation", func() {
-				err := pipInstallProcess.Execute(workingDir, packagesLayerPath, cacheLayerPath)
+				checksum, err := pipInstallProcess.Execute(workingDir, packagesLayerPath, cacheLayerPath)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(checksum).To(Equal("fake-checksum"))
 
 				Expect(executable.ExecuteCall.Receives.Execution).To(MatchFields(IgnoreExtras, Fields{
 					"Args": Equal([]string{
@@ -91,6 +102,10 @@ func testInstallProcess(t *testing.T, context spec.G, it spec.S) {
 					"Dir": Equal(workingDir),
 					"Env": ContainElement(fmt.Sprintf("PYTHONUSERBASE=%s", packagesLayerPath)),
 				}))
+
+				Expect(summer.SumCall.Receives.Paths).To(Equal([]string{
+					packagesLayerPath,
+				}))
 			})
 		})
 
@@ -105,8 +120,22 @@ func testInstallProcess(t *testing.T, context spec.G, it spec.S) {
 				})
 
 				it("returns an error", func() {
-					err := pipInstallProcess.Execute(workingDir, packagesLayerPath, cacheLayerPath)
+					checksum, err := pipInstallProcess.Execute(workingDir, packagesLayerPath, cacheLayerPath)
 					Expect(err).To(MatchError(ContainSubstring("permission denied")))
+					Expect(checksum).To(Equal(""))
+				})
+			})
+
+			context("when checksum fails", func() {
+				it.Before(func() {
+					summer.SumCall.Returns.String = "checksum-fail"
+					summer.SumCall.Returns.Error = errors.New("fake error")
+				})
+
+				it("returns an error", func() {
+					checksum, err := pipInstallProcess.Execute(workingDir, packagesLayerPath, cacheLayerPath)
+					Expect(err).To(Equal(errors.New("fake error")))
+					Expect(checksum).To(Equal("checksum-fail"))
 				})
 			})
 		})
